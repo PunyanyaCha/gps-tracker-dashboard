@@ -2,359 +2,490 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPS Tracker Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPS Tracker Dashboard</title>
 
-  <link rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
-  <style>
-    * { box-sizing: border-box; }
+<style>
+* { box-sizing: border-box; }
 
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #101827;
-      color: #f1f5f9;
-    }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: #f1f5f9;
+}
 
-    header {
-      padding: 22px;
-      background: #172337;
-      border-bottom: 1px solid #334155;
-    }
+header {
+  padding: 22px;
+  background: #172337;
+  border-bottom: 1px solid #334155;
+}
 
-    header h1 { margin: 0 0 8px; }
-    header p { margin: 0; color: #94a3b8; }
+header h1 { margin: 0 0 8px; }
+header p { margin: 0; color: #94a3b8; }
 
-    main {
-      max-width: 1200px;
-      margin: auto;
-      padding: 20px;
-    }
+main {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
 
-    .panel {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 18px;
-    }
+.panel, .stat {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
 
-    input, button {
-      padding: 12px;
-      border-radius: 7px;
-      border: 1px solid #475569;
-      font-size: 14px;
-    }
+input, button {
+  padding: 11px;
+  border-radius: 7px;
+  border: 1px solid #475569;
+  font-size: 14px;
+}
 
-    input {
-      width: 100%;
-      background: #0f172a;
-      color: white;
-      margin: 10px 0;
-    }
+input {
+  background: #0f172a;
+  color: white;
+}
 
-    button {
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-      border: none;
-    }
+button {
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  border: none;
+  margin: 4px 3px 4px 0;
+}
 
-    button:hover { background: #1d4ed8; }
+button:hover { background: #1d4ed8; }
 
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
-    }
+button.secondary { background: #475569; }
+button.secondary:hover { background: #64748b; }
 
-    .stat {
-      background: #1e293b;
-      border: 1px solid #334155;
-      padding: 18px;
-      border-radius: 10px;
-    }
+#apiUrl { width: 100%; margin: 10px 0; }
 
-    .stat small { color: #94a3b8; }
-    .stat h2 { margin: 10px 0 0; font-size: 23px; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
 
-    #map {
-      height: 430px;
-      width: 100%;
-      border-radius: 10px;
-      background: #334155;
-    }
+.stat { margin: 0; }
+.stat small { color: #94a3b8; }
+.stat h2 { margin: 10px 0 0; font-size: 22px; }
 
-    #status {
-      margin-top: 12px;
-      color: #fbbf24;
-      overflow-wrap: anywhere;
-    }
+#map {
+  height: 430px;
+  width: 100%;
+  border-radius: 10px;
+}
 
-    .table-wrap { overflow-x: auto; }
+#status {
+  margin-top: 12px;
+  color: #fbbf24;
+  overflow-wrap: anywhere;
+}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 650px;
-    }
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 15px;
+}
 
-    th, td {
-      text-align: left;
-      padding: 12px;
-      border-bottom: 1px solid #334155;
-      font-size: 13px;
-    }
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
 
-    th { color: #93c5fd; }
+.table-wrap { overflow-x: auto; }
 
-    .muted { color: #94a3b8; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+}
 
-    @media(max-width: 600px) {
-      main { padding: 12px; }
-      #map { height: 350px; }
-    }
-  </style>
+th, td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #334155;
+  font-size: 13px;
+}
+
+th { color: #93c5fd; }
+.muted { color: #94a3b8; }
+
+@media(max-width: 600px) {
+  main { padding: 12px; }
+  #map { height: 350px; }
+}
+</style>
 </head>
 
 <body>
 
 <header>
   <h1>GPS Tracker Dashboard</h1>
-  <p>Live GPS history and location monitoring</p>
+  <p>GPS History and Location Monitoring</p>
 </header>
 
 <main>
 
-  <section class="panel">
-    <h3>Google Apps Script API</h3>
-    <p class="muted">
-      Masukkan URL Web App Apps Script yang berakhiran /exec.
-    </p>
+<section class="panel">
+  <h3>Google Apps Script API</h3>
 
-    <input
-      type="url"
-      id="apiUrl"
-      placeholder="Paste Apps Script Web App URL di sini">
+  <input type="url" id="apiUrl"
+    placeholder="Paste Apps Script Web App URL (/exec)">
 
-    <button onclick="loadGPSData()">Load GPS Data</button>
-    <button onclick="refreshData()">Refresh</button>
+  <button onclick="loadGPSData()">Load GPS Data</button>
+  <button class="secondary" onclick="refreshData()">Refresh Now</button>
 
-    <div id="status">Menunggu konfigurasi API...</div>
-  </section>
+  <div id="status">Menunggu konfigurasi API...</div>
+  <p class="muted" id="lastUpdated">Last updated: -</p>
+  <p class="muted">Auto-refresh: setiap 2 menit</p>
+</section>
 
-  <section class="stats">
-    <div class="stat">
-      <small>Total GPS Records</small>
-      <h2 id="totalRecords">0</h2>
-    </div>
+<section class="stats">
+  <div class="stat">
+    <small>Total GPS Records</small>
+    <h2 id="totalRecords">0</h2>
+  </div>
 
-    <div class="stat">
-      <small>Latitude Terbaru</small>
-      <h2 id="latitude">-</h2>
-    </div>
+  <div class="stat">
+    <small>Latitude Terbaru</small>
+    <h2 id="latitude">-</h2>
+  </div>
 
-    <div class="stat">
-      <small>Longitude Terbaru</small>
-      <h2 id="longitude">-</h2>
-    </div>
+  <div class="stat">
+    <small>Longitude Terbaru</small>
+    <h2 id="longitude">-</h2>
+  </div>
 
-    <div class="stat">
-      <small>Satellites</small>
-      <h2 id="satellites">-</h2>
-    </div>
-  </section>
+  <div class="stat">
+    <small>Satellites</small>
+    <h2 id="satellites">-</h2>
+  </div>
+</section>
 
-  <section class="panel">
-    <h3>GPS Location Map</h3>
-    <div id="map"></div>
-  </section>
+<section class="panel">
+  <h3>GPS Location Map</h3>
+  <button onclick="goToLatest()">Go to Latest Location</button>
+  <button class="secondary" onclick="showAllPoints()">Show All Points</button>
+  <div id="map"></div>
+</section>
 
-  <section class="panel">
-    <h3>GPS History</h3>
+<section class="panel">
+  <h3>GPS History</h3>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>Latitude</th>
-            <th>Longitude</th>
-            <th>Satellites</th>
-            <th>Speed</th>
-            <th>Altitude</th>
-          </tr>
-        </thead>
+  <div class="controls">
+    <label>
+      Start Date
+      <input type="date" id="startDate">
+    </label>
 
-        <tbody id="historyTable">
-          <tr>
-            <td colspan="6" class="muted">
-              Belum ada data.
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+    <label>
+      End Date
+      <input type="date" id="endDate">
+    </label>
+
+    <button onclick="applyDateFilter()">Apply Filter</button>
+    <button class="secondary" onclick="clearDateFilter()">Clear Filter</button>
+  </div>
+
+  <p class="muted" id="filterInfo">Menampilkan seluruh data.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+          <th>Satellites</th>
+          <th>Speed</th>
+          <th>Altitude</th>
+        </tr>
+      </thead>
+
+      <tbody id="historyTable">
+        <tr><td colspan="6">Belum ada data.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-  const map = L.map('map').setView([-2, 118], 5);
+const map = L.map('map').setView([-2, 118], 5);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
-  let routeLine = null;
-  let markers = [];
+let allRecords = [];
+let routeLine = null;
+let markers = [];
+let latestMarker = null;
+let autoRefreshTimer = null;
+let requestInProgress = false;
 
-  function setStatus(message) {
-    document.getElementById('status').textContent = message;
+function setStatus(message) {
+  document.getElementById('status').textContent = message;
+}
+
+function loadGPSData() {
+  if (requestInProgress) return;
+
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+
+  if (!apiUrl || !apiUrl.endsWith('/exec')) {
+    setStatus('Masukkan URL Apps Script yang valid dan berakhiran /exec.');
+    return;
   }
 
-  function loadGPSData() {
-    const apiUrl = document.getElementById('apiUrl').value.trim();
+  requestInProgress = true;
+  setStatus('Mengambil data GPS...');
 
-    if (!apiUrl || !apiUrl.endsWith('/exec')) {
-      setStatus('Masukkan URL Apps Script yang valid dan berakhiran /exec.');
+  const oldScript = document.getElementById('gpsJsonp');
+  if (oldScript) oldScript.remove();
+
+  window.receiveGPSData = function(data) {
+    requestInProgress = false;
+
+    if (!data || data.status !== 'success' ||
+        !Array.isArray(data.records)) {
+      setStatus('Format data Apps Script tidak sesuai.');
       return;
     }
 
-    setStatus('Mengambil data GPS...');
+    allRecords = data.records.filter(r =>
+      Number.isFinite(Number(r.latitude)) &&
+      Number.isFinite(Number(r.longitude))
+    );
 
-    const oldScript = document.getElementById('gpsJsonp');
-    if (oldScript) oldScript.remove();
+    updateDashboard();
 
-    const callbackName = 'receiveGPSData';
+    document.getElementById('lastUpdated').textContent =
+      'Last updated: ' + new Date().toLocaleString('id-ID');
 
-    window[callbackName] = function(data) {
-      if (!data || data.status !== 'success' ||
-          !Array.isArray(data.records)) {
-        setStatus('Format data dari Apps Script tidak sesuai.');
-        return;
-      }
+    setStatus('Berhasil mengambil ' + allRecords.length + ' data GPS.');
 
-      displayGPSData(data.records);
-      setStatus('Berhasil mengambil ' + data.records.length + ' data GPS.');
-    };
+    if (!autoRefreshTimer) {
+      autoRefreshTimer = setInterval(loadGPSData, 120000);
+    }
+  };
 
-    const script = document.createElement('script');
-    script.id = 'gpsJsonp';
-    script.onerror = function() {
-      setStatus('Gagal mengambil data. Periksa URL dan dukungan JSONP Apps Script.');
-    };
+  const script = document.createElement('script');
+  script.id = 'gpsJsonp';
 
-    script.src = apiUrl +
-      '?callback=' + callbackName +
-      '&_=' + Date.now();
+  script.onerror = function() {
+    requestInProgress = false;
+    setStatus('Gagal mengambil data. Periksa URL atau koneksi internet.');
+  };
 
-    document.body.appendChild(script);
+  script.src = apiUrl +
+    '?callback=receiveGPSData&_=' + Date.now();
+
+  document.body.appendChild(script);
+}
+
+function refreshData() {
+  loadGPSData();
+}
+
+function getLocalDate(timestamp) {
+  if (!timestamp || timestamp === 'GPS_TIME_UNAVAILABLE') return null;
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function getFilteredRecords() {
+  const start = document.getElementById('startDate').value;
+  const end = document.getElementById('endDate').value;
+
+  return allRecords.filter(record => {
+    const date = getLocalDate(record.timestamp);
+
+    if (!start && !end) return true;
+    if (!date) return false;
+    if (start && date < start) return false;
+    if (end && date > end) return false;
+
+    return true;
+  });
+}
+
+function applyDateFilter() {
+  const start = document.getElementById('startDate').value;
+  const end = document.getElementById('endDate').value;
+
+  if (start && end && start > end) {
+    setStatus('Tanggal awal tidak boleh melewati tanggal akhir.');
+    return;
   }
 
-  function refreshData() {
-    loadGPSData();
+  updateDashboard();
+}
+
+function clearDateFilter() {
+  document.getElementById('startDate').value = '';
+  document.getElementById('endDate').value = '';
+  updateDashboard();
+}
+
+function updateDashboard() {
+  const records = getFilteredRecords();
+
+  document.getElementById('totalRecords').textContent = records.length;
+
+  document.getElementById('filterInfo').textContent =
+    'Menampilkan ' + records.length + ' dari ' + allRecords.length + ' records.';
+
+  const latest = allRecords
+    .slice()
+    .reverse()
+    .find(r => Number.isFinite(Number(r.latitude)) &&
+               Number.isFinite(Number(r.longitude)));
+
+  if (latest) {
+    document.getElementById('latitude').textContent =
+      Number(latest.latitude).toFixed(6);
+
+    document.getElementById('longitude').textContent =
+      Number(latest.longitude).toFixed(6);
+
+    document.getElementById('satellites').textContent =
+      latest.satellites ?? '-';
   }
 
-  function displayGPSData(records) {
-    const validRecords = records
-      .filter(r =>
-        Number.isFinite(Number(r.latitude)) &&
-        Number.isFinite(Number(r.longitude))
-      )
-      .sort((a, b) =>
-        String(a.timestamp).localeCompare(String(b.timestamp))
-      );
+  drawMap(records);
+  drawTable(records);
+}
 
-    document.getElementById('totalRecords').textContent =
-      validRecords.length;
+function clearMap() {
+  markers.forEach(marker => map.removeLayer(marker));
+  markers = [];
 
-    const latest = validRecords[validRecords.length - 1];
+  if (routeLine) {
+    map.removeLayer(routeLine);
+    routeLine = null;
+  }
 
-    if (latest) {
-      document.getElementById('latitude').textContent =
-        Number(latest.latitude).toFixed(6);
+  latestMarker = null;
+}
 
-      document.getElementById('longitude').textContent =
-        Number(latest.longitude).toFixed(6);
+function drawMap(records) {
+  clearMap();
 
-      document.getElementById('satellites').textContent =
-        latest.satellites ?? '-';
-    }
+  if (records.length === 0) return;
 
-    markers.forEach(marker => map.removeLayer(marker));
-    markers = [];
+  const coordinates = records.map(r => [
+    Number(r.latitude),
+    Number(r.longitude)
+  ]);
 
-    if (routeLine) {
-      map.removeLayer(routeLine);
-      routeLine = null;
-    }
+  routeLine = L.polyline(coordinates, {
+    color: '#38bdf8',
+    weight: 4
+  }).addTo(map);
 
-    const coordinates = validRecords.map(r => [
-      Number(r.latitude),
-      Number(r.longitude)
-    ]);
+  const first = records[0];
+  const last = records[records.length - 1];
 
-    if (coordinates.length > 0) {
-      routeLine = L.polyline(coordinates, {
-        color: '#38bdf8',
-        weight: 4
-      }).addTo(map);
+  markers.push(
+    L.marker([first.latitude, first.longitude])
+      .addTo(map)
+      .bindPopup('GPS Start')
+  );
 
-      const first = validRecords[0];
-      const last = validRecords[validRecords.length - 1];
+  latestMarker = L.marker([last.latitude, last.longitude])
+    .addTo(map)
+    .bindPopup('Titik terakhir dalam filter');
 
-      markers.push(
-        L.marker([first.latitude, first.longitude])
-          .addTo(map)
-          .bindPopup('GPS Start')
-      );
+  markers.push(latestMarker);
 
-      if (validRecords.length > 1) {
-        markers.push(
-          L.marker([last.latitude, last.longitude])
-            .addTo(map)
-            .bindPopup('GPS Terbaru')
-        );
-      }
+  map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+}
 
-      map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
-    }
+function drawTable(records) {
+  const table = document.getElementById('historyTable');
+  table.innerHTML = '';
 
-    const table = document.getElementById('historyTable');
-    table.innerHTML = '';
+  records.slice().reverse().forEach(record => {
+    const tr = document.createElement('tr');
 
-    validRecords.slice().reverse().forEach(record => {
-      const tr = document.createElement('tr');
-
-      [
-        record.timestamp,
-        Number(record.latitude).toFixed(6),
-        Number(record.longitude).toFixed(6),
-        record.satellites ?? '-',
-        record.speed ?? '-',
-        record.altitude ?? '-'
-      ].forEach(value => {
-        const td = document.createElement('td');
-        td.textContent = value ?? '-';
-        tr.appendChild(td);
-      });
-
-      table.appendChild(tr);
+    [
+      record.timestamp,
+      Number(record.latitude).toFixed(6),
+      Number(record.longitude).toFixed(6),
+      record.satellites ?? '-',
+      record.speed ?? '-',
+      record.altitude ?? '-'
+    ].forEach(value => {
+      const td = document.createElement('td');
+      td.textContent = value ?? '-';
+      tr.appendChild(td);
     });
 
-    if (validRecords.length === 0) {
-      table.innerHTML =
-        '<tr><td colspan="6">Tidak ada data GPS valid.</td></tr>';
-    }
-  }
-</script>
+    table.appendChild(tr);
+  });
 
+  if (records.length === 0) {
+    table.innerHTML =
+      '<tr><td colspan="6">Tidak ada data pada rentang tanggal tersebut.</td></tr>';
+  }
+}
+
+function goToLatest() {
+  const latest = allRecords[allRecords.length - 1];
+
+  if (!latest) {
+    setStatus('Belum ada lokasi GPS.');
+    return;
+  }
+
+  clearDateFilter();
+
+  const lat = Number(latest.latitude);
+  const lng = Number(latest.longitude);
+
+  map.setView([lat, lng], 17);
+  setStatus('Menampilkan lokasi GPS terbaru.');
+}
+
+function showAllPoints() {
+  const records = getFilteredRecords();
+
+  if (!records.length) {
+    setStatus('Tidak ada titik GPS untuk ditampilkan.');
+    return;
+  }
+
+  if (routeLine) {
+    map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+  }
+}
+
+</script>
 </body>
 </html>
