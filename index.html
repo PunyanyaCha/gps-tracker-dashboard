@@ -1,1 +1,360 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS Tracker Dashboard</title>
+
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #101827;
+      color: #f1f5f9;
+    }
+
+    header {
+      padding: 22px;
+      background: #172337;
+      border-bottom: 1px solid #334155;
+    }
+
+    header h1 { margin: 0 0 8px; }
+    header p { margin: 0; color: #94a3b8; }
+
+    main {
+      max-width: 1200px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    input, button {
+      padding: 12px;
+      border-radius: 7px;
+      border: 1px solid #475569;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      background: #0f172a;
+      color: white;
+      margin: 10px 0;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+
+    button:hover { background: #1d4ed8; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 18px;
+      border-radius: 10px;
+    }
+
+    .stat small { color: #94a3b8; }
+    .stat h2 { margin: 10px 0 0; font-size: 23px; }
+
+    #map {
+      height: 430px;
+      width: 100%;
+      border-radius: 10px;
+      background: #334155;
+    }
+
+    #status {
+      margin-top: 12px;
+      color: #fbbf24;
+      overflow-wrap: anywhere;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #334155;
+      font-size: 13px;
+    }
+
+    th { color: #93c5fd; }
+
+    .muted { color: #94a3b8; }
+
+    @media(max-width: 600px) {
+      main { padding: 12px; }
+      #map { height: 350px; }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>GPS Tracker Dashboard</h1>
+  <p>Live GPS history and location monitoring</p>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h3>Google Apps Script API</h3>
+    <p class="muted">
+      Masukkan URL Web App Apps Script yang berakhiran /exec.
+    </p>
+
+    <input
+      type="url"
+      id="apiUrl"
+      placeholder="Paste Apps Script Web App URL di sini">
+
+    <button onclick="loadGPSData()">Load GPS Data</button>
+    <button onclick="refreshData()">Refresh</button>
+
+    <div id="status">Menunggu konfigurasi API...</div>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <small>Total GPS Records</small>
+      <h2 id="totalRecords">0</h2>
+    </div>
+
+    <div class="stat">
+      <small>Latitude Terbaru</small>
+      <h2 id="latitude">-</h2>
+    </div>
+
+    <div class="stat">
+      <small>Longitude Terbaru</small>
+      <h2 id="longitude">-</h2>
+    </div>
+
+    <div class="stat">
+      <small>Satellites</small>
+      <h2 id="satellites">-</h2>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>GPS Location Map</h3>
+    <div id="map"></div>
+  </section>
+
+  <section class="panel">
+    <h3>GPS History</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Satellites</th>
+            <th>Speed</th>
+            <th>Altitude</th>
+          </tr>
+        </thead>
+
+        <tbody id="historyTable">
+          <tr>
+            <td colspan="6" class="muted">
+              Belum ada data.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const map = L.map('map').setView([-2, 118], 5);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  let routeLine = null;
+  let markers = [];
+
+  function setStatus(message) {
+    document.getElementById('status').textContent = message;
+  }
+
+  function loadGPSData() {
+    const apiUrl = document.getElementById('apiUrl').value.trim();
+
+    if (!apiUrl || !apiUrl.endsWith('/exec')) {
+      setStatus('Masukkan URL Apps Script yang valid dan berakhiran /exec.');
+      return;
+    }
+
+    setStatus('Mengambil data GPS...');
+
+    const oldScript = document.getElementById('gpsJsonp');
+    if (oldScript) oldScript.remove();
+
+    const callbackName = 'receiveGPSData';
+
+    window[callbackName] = function(data) {
+      if (!data || data.status !== 'success' ||
+          !Array.isArray(data.records)) {
+        setStatus('Format data dari Apps Script tidak sesuai.');
+        return;
+      }
+
+      displayGPSData(data.records);
+      setStatus('Berhasil mengambil ' + data.records.length + ' data GPS.');
+    };
+
+    const script = document.createElement('script');
+    script.id = 'gpsJsonp';
+    script.onerror = function() {
+      setStatus('Gagal mengambil data. Periksa URL dan dukungan JSONP Apps Script.');
+    };
+
+    script.src = apiUrl +
+      '?callback=' + callbackName +
+      '&_=' + Date.now();
+
+    document.body.appendChild(script);
+  }
+
+  function refreshData() {
+    loadGPSData();
+  }
+
+  function displayGPSData(records) {
+    const validRecords = records
+      .filter(r =>
+        Number.isFinite(Number(r.latitude)) &&
+        Number.isFinite(Number(r.longitude))
+      )
+      .sort((a, b) =>
+        String(a.timestamp).localeCompare(String(b.timestamp))
+      );
+
+    document.getElementById('totalRecords').textContent =
+      validRecords.length;
+
+    const latest = validRecords[validRecords.length - 1];
+
+    if (latest) {
+      document.getElementById('latitude').textContent =
+        Number(latest.latitude).toFixed(6);
+
+      document.getElementById('longitude').textContent =
+        Number(latest.longitude).toFixed(6);
+
+      document.getElementById('satellites').textContent =
+        latest.satellites ?? '-';
+    }
+
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+
+    if (routeLine) {
+      map.removeLayer(routeLine);
+      routeLine = null;
+    }
+
+    const coordinates = validRecords.map(r => [
+      Number(r.latitude),
+      Number(r.longitude)
+    ]);
+
+    if (coordinates.length > 0) {
+      routeLine = L.polyline(coordinates, {
+        color: '#38bdf8',
+        weight: 4
+      }).addTo(map);
+
+      const first = validRecords[0];
+      const last = validRecords[validRecords.length - 1];
+
+      markers.push(
+        L.marker([first.latitude, first.longitude])
+          .addTo(map)
+          .bindPopup('GPS Start')
+      );
+
+      if (validRecords.length > 1) {
+        markers.push(
+          L.marker([last.latitude, last.longitude])
+            .addTo(map)
+            .bindPopup('GPS Terbaru')
+        );
+      }
+
+      map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+    }
+
+    const table = document.getElementById('historyTable');
+    table.innerHTML = '';
+
+    validRecords.slice().reverse().forEach(record => {
+      const tr = document.createElement('tr');
+
+      [
+        record.timestamp,
+        Number(record.latitude).toFixed(6),
+        Number(record.longitude).toFixed(6),
+        record.satellites ?? '-',
+        record.speed ?? '-',
+        record.altitude ?? '-'
+      ].forEach(value => {
+        const td = document.createElement('td');
+        td.textContent = value ?? '-';
+        tr.appendChild(td);
+      });
+
+      table.appendChild(tr);
+    });
+
+    if (validRecords.length === 0) {
+      table.innerHTML =
+        '<tr><td colspan="6">Tidak ada data GPS valid.</td></tr>';
+    }
+  }
+</script>
+
+</body>
+</html>
